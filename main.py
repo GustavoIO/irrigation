@@ -1,37 +1,35 @@
 import paho.mqtt.client as mqtt
 from datetime import datetime
 import time
+import json
+import os
 
-def loadUniqueId():
-    # mock code, on production this will read a file on the filesystem
-    return "98b694ce-3d4d-4786-8d45-defd265bb3e0"
+def loadUniqueId(uniqueIdFile):
+    file = open(uniqueIdFile, "r")
+    uniqueId = file.read().rstrip()
+    file.close()
+    return uniqueId
 
-def loadSettings():
-    # mock code, on production this will read a file on the filesystem
-    return {
-        "schedules": {
-            "zone1": [
-                {
-                    "startDayOfWeek": 2,
-                    "startHour": 14,
-                    "startMinute": 34,
-                    "endDayOfWeek": 2,
-                    "endHour": 14,
-                    "endMinute": 35
-                },{
-                    "startDayOfWeek": 2,
-                    "startHour": 14,
-                    "startMinute": 37,
-                    "endDayOfWeek": 2,
-                    "endHour": 14,
-                    "endMinute": 40
-                }
-            ],
-            "zone2": [],
-            "zone3": [],
-            "zone4": [],
-        }
-    }
+def loadSettings(settingsFile):
+    file = open(settingsFile, "r")
+    settings = json.loads(file.read())
+    file.close()
+    return settings
+
+def updateSettings(settingsJson, settingsFile):
+    file = open(settingsFile, "w")
+    file.write(settingsJson)
+    file.close()
+    os._exit(1) # restart app to load new settings
+    
+
+def publishDescription(client, topic, description):
+    s = json.dumps(description)
+    client.publish(topic, s, 0, retain=True)
+
+def publishSettings(client, topic, settings):
+    s = json.dumps(settings)
+    client.publish(topic, s, 0, retain=True)
 
 def turnAllZonesOff(zones):
     for zone in zones:
@@ -49,21 +47,46 @@ def onConnect(client, userdata, flags, rc):
     print("Connected: " + str(rc))
 
     # subscribe
-    client.subscribe(settingsTopic)
+    result = client.subscribe(settingsUpdateTopic)
+    print("Subscribed to: " + settingsUpdateTopic + " with result: " + str(result))
 
 def onMessage(client, userdata, msg):
-    print(msg.topic + " " + str(msg.payload))
+    topic = msg.topic
+    payload = msg.payload.decode("utf-8")
+    print(topic + " " + payload)
+
+    if topic == settingsUpdateTopic:
+        updateSettings(payload, settingsFile)
+    else:
+        print("Unexpected topic: " + msg.topic)
 
 # setup
 client = mqtt.Client()
 client.on_connect = onConnect
-client.onMessage = onMessage
+client.on_message = onMessage
 
-uniqueId = loadUniqueId()
+uniqueIdFile = "/home/pi/irrigation/unique_id"
+settingsFile = "/home/pi/irrigation/irrigation_settings.json"
+
+version = "0.1.0"
+
+uniqueId = loadUniqueId(uniqueIdFile)
 descriptionTopic = "devices/<id>/description".replace("<id>", uniqueId)
 settingsTopic = "devices/<id>/settings".replace("<id>", uniqueId)
+settingsUpdateTopic = settingsTopic + "/update"
 
-settings = loadSettings()
+timeFormat = "%Y-%m-%d %H:%M:%S"
+startupTime = datetime.now()
+
+description = {
+    "id": uniqueId,
+    "type": "irrigatonContoller",
+    "version": version,
+    "uptime": 0,
+    "time": startupTime.strftime(timeFormat)
+}
+
+settings = loadSettings(settingsFile)
 
 zones = {
     "zone1": {
@@ -87,7 +110,7 @@ zones = {
 client.connect("localhost", 1883)
 client.loop_start()
 
-# publishSettings(settings)
+publishSettings(client, settingsTopic, settings)
 
 turnAllZonesOff(zones)
 
@@ -97,6 +120,12 @@ while True:
     dayOfWeek = now.weekday()
     hour = now.hour
     minute = now.minute
+
+    # update desciption
+    description["uptime"] = (now - startupTime).total_seconds()
+    description["time"] = now.strftime(timeFormat)
+
+    publishDescription(client, descriptionTopic, description)
 
     # for each zone check if the schedule matches the status
     for zone in zones:

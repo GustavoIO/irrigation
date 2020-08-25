@@ -1,0 +1,24 @@
+{
+    "schedules": {
+        "zone1": [
+            {
+                "startDayOfWeek": 2,
+                "startHour": 14,
+                "startMinute": 34,
+                "endDayOfWeek": 2,
+                "endHour": 14,
+                "endMinute": 35
+            },{
+                "startDayOfWeek": 2,
+                "startHour": 14,
+                "startMinute": 37,
+                "endDayOfWeek": 2,
+                "endHour": 14,
+                "endMinute": 40
+            }
+        ],
+        "zone2": [],
+        "zone3": [],
+        "zone4": []
+    }
+}
