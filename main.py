@@ -3,6 +3,7 @@ from datetime import datetime
 import time
 import json
 import os
+import gpiozero
 
 def loadUniqueId(uniqueIdFile):
     file = open(uniqueIdFile, "r")
@@ -36,19 +37,23 @@ def turnAllZonesOff(zones):
         turnZoneOff(zones[zone])
 
 def turnZoneOff(zone):
-    print("gpio: " + str(zone["gpio"]) + " off")
-    zone["on"] = False
+    print("Turning zone " + str(zone["gpio"]) + " off")
+    zone["gpio"].off()
 
 def turnZoneOn(zone):
-    print("gpio: " + str(zone["gpio"]) + " on")
-    zone["on"] = True
+    print("Turning zone " + str(zone["gpio"]) + " on")
+    zone["gpio"].on()
 
 def onConnect(client, userdata, flags, rc):
     print("Connected: " + str(rc))
 
     # subscribe
-    result = client.subscribe(settingsUpdateTopic)
-    print("Subscribed to: " + settingsUpdateTopic + " with result: " + str(result))
+    client.subscribe(settingsUpdateTopic)
+    client.subscribe(zone1Topic)
+    client.subscribe(zone2Topic)
+    client.subscribe(zone3Topic)
+    client.subscribe(zone4Topic)
+    
 
 def onMessage(client, userdata, msg):
     topic = msg.topic
@@ -57,6 +62,26 @@ def onMessage(client, userdata, msg):
 
     if topic == settingsUpdateTopic:
         updateSettings(payload, settingsFile)
+    elif topic == zone1Topic:
+        if payload == "on":
+            turnZoneOn(zones["zone1"])
+        elif  payload == "off":
+            turnZoneOff(zones["zone1"])
+    elif topic == zone2Topic:
+        if payload == "on":
+            turnZoneOn(zones["zone2"])
+        elif  payload == "off":
+            turnZoneOff(zones["zone2"])
+    elif topic == zone3Topic:
+        if payload == "on":
+            turnZoneOn(zones["zone3"])
+        elif  payload == "off":
+            turnZoneOff(zones["zone3"])
+    elif topic == zone4Topic:
+        if payload == "on":
+            turnZoneOn(zones["zone4"])
+        elif  payload == "off":
+            turnZoneOff(zones["zone4"])
     else:
         print("Unexpected topic: " + msg.topic)
 
@@ -74,6 +99,10 @@ uniqueId = loadUniqueId(uniqueIdFile)
 descriptionTopic = "devices/<id>/description".replace("<id>", uniqueId)
 settingsTopic = "devices/<id>/settings".replace("<id>", uniqueId)
 settingsUpdateTopic = settingsTopic + "/update"
+zone1Topic = "devices/<id>/zone/1".replace("<id>", uniqueId)
+zone2Topic = "devices/<id>/zone/2".replace("<id>", uniqueId)
+zone3Topic = "devices/<id>/zone/3".replace("<id>", uniqueId)
+zone4Topic = "devices/<id>/zone/4".replace("<id>", uniqueId)
 
 timeFormat = "%Y-%m-%d %H:%M:%S"
 startupTime = datetime.now()
@@ -90,20 +119,16 @@ settings = loadSettings(settingsFile)
 
 zones = {
     "zone1": {
-        "gpio": 10,
-        "on": False,
+        "gpio": gpiozero.OutputDevice(27)
     },
     "zone2": {
-        "gpio": 11,
-        "on": False
+        "gpio": gpiozero.OutputDevice(22)
     },
     "zone3": {
-        "gpio": 12,
-        "on": False
+        "gpio": gpiozero.OutputDevice(23)
     },
     "zone4": {
-        "gpio": 13,
-        "on": False
+        "gpio": gpiozero.OutputDevice(24)
     }
 }
 
@@ -111,8 +136,6 @@ client.connect("localhost", 1883)
 client.loop_start()
 
 publishSettings(client, settingsTopic, settings)
-
-turnAllZonesOff(zones)
 
 while True:
 
@@ -129,26 +152,17 @@ while True:
 
     # for each zone check if the schedule matches the status
     for zone in zones:
-        shouldBeOn = False
         for schedule in settings["schedules"][zone]:
-            if  dayOfWeek >= schedule["startDayOfWeek"] and \
-                hour >= schedule["startHour"] and \
-                minute >= schedule["startMinute"] and \
-                dayOfWeek <=  schedule["endDayOfWeek"] and \
-                hour <= schedule["endHour"] and \
-                minute < schedule["endMinute"]:
 
-                shouldBeOn = True
-                break
+            if dayOfWeek == schedule["dayOfWeek"] and \
+                hour == schedule["hour"] and \
+                minute == schedule["minute"]:
 
-        if shouldBeOn and not zones[zone]["on"]:
-            # zone is scheduled. Turn it on
-            turnZoneOn(zones[zone])
-        elif not shouldBeOn and zones[zone]["on"]:
-            # zone is scheduled, but it's on. Turn it off
-            turnZoneOff(zones[zone])
-            
+                if schedule["action"] == "on":
+                    turnZoneOn(zones[zone])
+                elif schedule["action"] == "off":
+                    turnZoneOff(zones[zone])
 
-    time.sleep(20) # sleep for 20 second so schedules are verified thrice a minute
+    time.sleep(30) # sleep for 30 seconds so schedules are verified twice a minute
 
 

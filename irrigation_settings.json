@@ -2,19 +2,15 @@
     "schedules": {
         "zone1": [
             {
-                "startDayOfWeek": 2,
-                "startHour": 14,
-                "startMinute": 34,
-                "endDayOfWeek": 2,
-                "endHour": 14,
-                "endMinute": 35
+                "dayOfWeek": 2,
+                "hour": 14,
+                "minute": 34,
+                "action": "on"
             },{
-                "startDayOfWeek": 2,
-                "startHour": 14,
-                "startMinute": 37,
-                "endDayOfWeek": 2,
-                "endHour": 14,
-                "endMinute": 40
+                "dayOfWeek": 2,
+                "hour": 14,
+                "minute": 40,
+				"action": "off"
             }
         ],
         "zone2": [],
