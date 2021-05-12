@@ -22,7 +22,6 @@ def updateSettings(settingsJson, settingsFile):
     file.write(settingsJson)
     file.close()
     os._exit(1) # restart app to load new settings
-    
 
 def publishDescription(client, topic, description):
     s = json.dumps(description)
@@ -119,16 +118,16 @@ settings = loadSettings(settingsFile)
 
 zones = {
     "zone1": {
-        "gpio": gpiozero.OutputDevice(27)
+        "gpio": gpiozero.OutputDevice(27, False)
     },
     "zone2": {
-        "gpio": gpiozero.OutputDevice(22)
+        "gpio": gpiozero.OutputDevice(22, False)
     },
     "zone3": {
-        "gpio": gpiozero.OutputDevice(23)
+        "gpio": gpiozero.OutputDevice(24, False)
     },
     "zone4": {
-        "gpio": gpiozero.OutputDevice(24)
+        "gpio": gpiozero.OutputDevice(23, False)
     }
 }
 
