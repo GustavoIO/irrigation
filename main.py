@@ -15,6 +15,10 @@ def publishAvailability(client, zone, zoneData, availability):
 def publishState(client, zone, zoneData, state):
     client.publish(zoneData['description']['state_topic'], state, 0, retain=True)
 
+def onDisconnect(client, userdata):
+    zones = userData
+    turnAllZonesOff(zones)
+
 def turnAllZonesOff(zones):
     for zone in zones:
         turnZoneOff(zones[zone])
@@ -100,7 +104,7 @@ for zone in zones:
 client = mqtt.Client(userdata=zones)
 client.on_connect = onConnect
 client.on_message = onMessage
-
+client.on_disconnect = onDisconnect
 
 client.connect("192.168.1.201", 1883)
 client.loop_forever()
