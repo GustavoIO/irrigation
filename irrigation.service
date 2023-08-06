@@ -1,0 +1,10 @@
+[Unit]
+Description=irrigation controller
+
+[Service]
+Type=simple
+User=gustavo
+ExecStart=/usr/bin/python3 /home/gustavo/irrigation/main.py
+
+[Install]
+WantedBy=multi-user.target
